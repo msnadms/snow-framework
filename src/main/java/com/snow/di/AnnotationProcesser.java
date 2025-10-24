@@ -1,40 +1,44 @@
 package com.snow.di;
 
 import com.snow.annotations.Controller;
-import com.snow.annotations.Inject;
+import com.snow.annotations.Component;
+import com.snow.util.Lifetime;
 
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class AnnotationProcesser {
 
     private final Set<Class<?>> controllers;
-    private final Set<Class<?>> serviceClasses;
+    private final Map<Class<?>, ComponentDefinition> components;
 
     private static AnnotationProcesser instance;
 
     public static AnnotationProcesser get(String basePath) {
         if (instance == null) {
             instance = new AnnotationProcesser(basePath);
-            return instance;
         }
         return instance;
     }
 
     private AnnotationProcesser(String basePath) {
         controllers = new HashSet<>();
-        serviceClasses = new HashSet<>();
+        components = new HashMap<>();
         var classes = ComponentScanner.scan(basePath);
         for (var clazz : classes) {
             if (clazz.isAnnotationPresent(Controller.class)) {
                 controllers.add(clazz);
             }
-            if (
-                Arrays.stream(clazz.getConstructors())
-                        .anyMatch(constructor -> constructor.isAnnotationPresent(Inject.class))
-            ) {
-                serviceClasses.add(clazz);
+            if (clazz.isAnnotationPresent(Component.class)) {
+                components.put(
+                        clazz,
+                        new ComponentDefinition(
+                                clazz,
+                                clazz.getAnnotation(Component.class).value() == Lifetime.SINGLETON
+                        )
+                );
             }
         }
     }
@@ -43,7 +47,8 @@ public class AnnotationProcesser {
         return controllers;
     }
 
-    public Set<Class<?>> getServiceClasses() {
-        return serviceClasses;
+    public Map<Class<?>, ComponentDefinition> getComponents() {
+        return components;
     }
+
 }
