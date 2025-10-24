@@ -1,7 +1,6 @@
 package com.snow.core;
 
 import com.snow.di.ApplicationContext;
-import com.snow.di.ComponentScanner;
 import com.snow.test.TestObjOne;
 
 import java.io.IOException;

@@ -1,10 +1,12 @@
 package com.snow.di;
 
-public record ComponentDefinition(Class<?> type, boolean singleton) {
+import com.snow.util.Lifetime;
+
+public record ComponentDefinition(Class<?> type, Lifetime lifetime) {
     public Class<?> getType() {
         return type;
     }
-    public boolean isSingleton() {
-        return singleton;
+    public Lifetime getLifetime() {
+        return lifetime;
     }
 }

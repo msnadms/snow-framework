@@ -2,7 +2,6 @@ package com.snow.di;
 
 import com.snow.annotations.Controller;
 import com.snow.annotations.Component;
-import com.snow.util.Lifetime;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +35,7 @@ public class AnnotationProcesser {
                         clazz,
                         new ComponentDefinition(
                                 clazz,
-                                clazz.getAnnotation(Component.class).value() == Lifetime.SINGLETON
+                                clazz.getAnnotation(Component.class).value()
                         )
                 );
             }

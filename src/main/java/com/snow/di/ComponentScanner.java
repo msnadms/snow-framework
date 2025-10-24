@@ -15,20 +15,10 @@ public class ComponentScanner {
 
     private static final Logger logger = Logger.getLogger(ComponentScanner.class.getName());
 
-    public static Set<Class<?>> scan(String basePath) throws ClassScanningException {
+    public static Set<Class<?>> scan(String basePath)
+            throws ClassScanningException {
         try {
             ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-            var resources = classLoader.getResources(basePath.replace('.', '/'));
-            return scanClasses(resources, basePath);
-        } catch (IOException | ClassNotFoundException e) {
-            logger.log(Level.SEVERE, "Error while trying to scan classes", e);
-            throw new ClassScanningException(basePath, e);
-        }
-    }
-
-    public static Set<Class<?>> scan(Class<?> contextClass, String basePath) throws ClassScanningException {
-        try {
-            ClassLoader classLoader = contextClass.getClassLoader();
             var resources = classLoader.getResources(basePath.replace('.', '/'));
             return scanClasses(resources, basePath);
         } catch (IOException | ClassNotFoundException e) {
@@ -52,7 +42,8 @@ public class ComponentScanner {
         return classes;
     }
 
-    private static void findResourcesInDirectory(File directory, String packageName, Set<Class<?>> classes) throws ClassNotFoundException {
+    private static void findResourcesInDirectory(File directory, String packageName, Set<Class<?>> classes)
+            throws ClassNotFoundException {
         var files = directory.listFiles();
         if (files == null) {
             return;
@@ -67,7 +58,8 @@ public class ComponentScanner {
         }
     }
 
-    private static void findResourcesInJar(URL resource, String path, Set<Class<?>> classes) throws IOException, ClassNotFoundException {
+    private static void findResourcesInJar(URL resource, String path, Set<Class<?>> classes)
+            throws IOException, ClassNotFoundException {
         String jarPath = resource.getPath().substring(5, resource.getPath().indexOf("!"));
         try (JarFile jar = new JarFile(jarPath)) {
             Enumeration<JarEntry> entries = jar.entries();
