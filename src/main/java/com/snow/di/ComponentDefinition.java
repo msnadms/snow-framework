@@ -2,11 +2,4 @@ package com.snow.di;
 
 import com.snow.util.Lifetime;
 
-public record ComponentDefinition(Class<?> type, Lifetime lifetime) {
-    public Class<?> getType() {
-        return type;
-    }
-    public Lifetime getLifetime() {
-        return lifetime;
-    }
-}
+public record ComponentDefinition(Class<?> type, Lifetime lifetime) {}

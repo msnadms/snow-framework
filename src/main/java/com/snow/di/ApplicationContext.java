@@ -4,21 +4,27 @@ import com.snow.annotations.Inject;
 import com.snow.exceptions.ComponentNotFoundException;
 import com.snow.exceptions.CyclicDependencyException;
 import com.snow.exceptions.DependencyInstantiationException;
+import com.snow.http.ControllerDefinition;
 import com.snow.util.Lifetime;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 public class ApplicationContext {
 
-    private static final Map<Class<?>, Object> singletons = new HashMap<>();
-    private static final Map<Class<?>, Object> scoped = new HashMap<>();
-    private final Map<Class<?>, ComponentDefinition> components;
+    private static final Map<Class<?>, Constructor<?>> constructors = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Object> singletons = new ConcurrentHashMap<>();
 
-    private static ApplicationContext instance;
+    private final ThreadLocal<Map<Class<?>, Object>> scoped = ThreadLocal.withInitial(HashMap::new);
+    private final Map<Class<?>, Lifetime> components;
+    private final Map<String, ControllerDefinition> controllerMethods;
 
-    public static ApplicationContext get(String basePath) {
+    private static volatile ApplicationContext instance;
+
+    public synchronized static ApplicationContext get(String basePath) {
         if (instance == null) {
             instance = new ApplicationContext(basePath);
         }
@@ -26,7 +32,9 @@ public class ApplicationContext {
     }
 
     private ApplicationContext(String basePath) {
-        this.components = AnnotationProcesser.get(basePath).getComponents();
+        var processor = AnnotationProcessor.get(basePath);
+        this.components = Collections.unmodifiableMap(processor.getComponents());
+        this.controllerMethods = Collections.unmodifiableMap(processor.getControllerMethods());
     }
 
     public <T> Object createComponent(Class<T> clazz) {
@@ -38,39 +46,47 @@ public class ApplicationContext {
 
     private <T> Object createComponentHelper(Class<T> clazz) {
 
+        var scopedLocal = scoped.get();
         if (singletons.containsKey(clazz)) {
             return singletons.get(clazz);
-        } else if (scoped.containsKey(clazz)) {
-            return scoped.get(clazz);
+        } else if (scopedLocal.containsKey(clazz)) {
+            return scopedLocal.get(clazz);
         }
 
-        var component = components.get(clazz);
-        if (component == null) {
+        var lifetime = components.get(clazz);
+        if (lifetime == null) {
             throw new ComponentNotFoundException(clazz);
         }
 
         Constructor<?> constructor = chooseConstructor(clazz);
 
-        Set<Object> dependencies = new HashSet<>();
+        List<Object> dependencies = new ArrayList<>();
         for (var parameter : constructor.getParameters()) {
-            dependencies.add(createComponent(parameter.getType()));
+            dependencies.add(createComponentHelper(parameter.getType()));
         }
 
-        try {
-            var instance = constructor.newInstance(dependencies.toArray());
-            if (component.getLifetime() == Lifetime.SINGLETON) {
-                singletons.put(clazz, instance);
-            } else if (component.getLifetime() == Lifetime.SCOPED) {
-                scoped.put(clazz, instance);
+        Function<? super Class<?>, ?> instanceCreator = (c) -> {
+            try {
+                return constructor.newInstance(dependencies.toArray());
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw new DependencyInstantiationException(c, e);
             }
-            return instance;
-        } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new DependencyInstantiationException(clazz, e);
+        };
+
+        if (lifetime == Lifetime.SINGLETON) {
+            return singletons.computeIfAbsent(clazz, instanceCreator);
+        } else if (lifetime == Lifetime.SCOPED) {
+            return scopedLocal.computeIfAbsent(clazz, instanceCreator);
         }
+        return instanceCreator.apply(clazz);
     }
 
     public void clearScopedCache() {
-        scoped.clear();
+        scoped.get().clear();
+    }
+
+    public ControllerDefinition getControllerDefinition(String route) {
+        return controllerMethods.get(route);
     }
 
     private boolean isCyclic(Class<?> clazz, Set<Class<?>> path) {
@@ -89,7 +105,10 @@ public class ApplicationContext {
     }
 
     private Constructor<?> chooseConstructor(Class<?> clazz) {
-        return Arrays.stream(clazz.getConstructors())
+        if (constructors.containsKey(clazz)) {
+            return constructors.get(clazz);
+        }
+        var constructor = Arrays.stream(clazz.getConstructors())
                     .filter(c -> c.isAnnotationPresent(Inject.class))
                     .findFirst()
                     .orElseGet(() -> {
@@ -99,5 +118,7 @@ public class ApplicationContext {
                             throw new DependencyInstantiationException(clazz, e);
                         }
                     });
+        constructors.put(clazz, constructor);
+        return constructor;
     }
 }
