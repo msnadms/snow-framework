@@ -1,8 +1,7 @@
 package com.snow.web;
 
 import com.snow.di.ApplicationContext;
-import com.snow.http.HttpHandler;
-import com.snow.http.HttpUtil;
+import com.snow.http.models.HttpHandler;
 
 public class Snow {
 
@@ -14,8 +13,7 @@ public class Snow {
 
     public HttpHandler receive() {
         return (request, response) -> {
-            String route = HttpUtil.getRoutingKey(request.method(), HttpUtil.getSimpleRoute(request.route()));
-            DispatcherService dispatcherService = new DispatcherService(context, route);
+            DispatcherService dispatcherService = new DispatcherService(context, request);
 
         };
     }

@@ -1,4 +1,4 @@
-package com.snow.http;
+package com.snow.http.models;
 
 import java.io.InputStream;
 import java.util.Map;

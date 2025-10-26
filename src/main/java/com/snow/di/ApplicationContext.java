@@ -4,7 +4,7 @@ import com.snow.annotations.Inject;
 import com.snow.exceptions.ComponentNotFoundException;
 import com.snow.exceptions.CyclicDependencyException;
 import com.snow.exceptions.DependencyInstantiationException;
-import com.snow.http.ControllerDefinition;
+import com.snow.http.models.RouteNode;
 import com.snow.util.Lifetime;
 
 import java.lang.reflect.Constructor;
@@ -20,7 +20,6 @@ public class ApplicationContext {
 
     private final ThreadLocal<Map<Class<?>, Object>> scoped = ThreadLocal.withInitial(HashMap::new);
     private final Map<Class<?>, Lifetime> components;
-    private final Map<String, ControllerDefinition> controllerMethods;
 
     private static volatile ApplicationContext instance;
 
@@ -34,7 +33,6 @@ public class ApplicationContext {
     private ApplicationContext(String basePath) {
         var processor = AnnotationProcessor.get(basePath);
         this.components = Collections.unmodifiableMap(processor.getComponents());
-        this.controllerMethods = Collections.unmodifiableMap(processor.getControllerMethods());
     }
 
     public <T> Object createComponent(Class<T> clazz) {
@@ -83,10 +81,6 @@ public class ApplicationContext {
 
     public void clearScopedCache() {
         scoped.get().clear();
-    }
-
-    public ControllerDefinition getControllerDefinition(String route) {
-        return controllerMethods.get(route);
     }
 
     private boolean isCyclic(Class<?> clazz, Set<Class<?>> path) {

@@ -6,11 +6,13 @@ import com.snow.annotations.Route;
 import com.snow.annotations.params.FromBody;
 import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
+import com.snow.exceptions.ParameterException;
 import com.snow.http.ControllerDefinition;
 import com.snow.http.ControllerParameter;
-import com.snow.http.HttpUtil;
+import com.snow.util.HttpUtil;
 import com.snow.util.Lifetime;
 import com.snow.util.ParameterSource;
+import com.snow.web.RoutingHelper;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -20,7 +22,6 @@ import java.util.Map;
 
 public class AnnotationProcessor {
 
-    private final Map<String, ControllerDefinition> controllerMethods;
     private final Map<Class<?>, Lifetime> components;
 
     private static AnnotationProcessor instance;
@@ -33,7 +34,6 @@ public class AnnotationProcessor {
     }
 
     private AnnotationProcessor(String basePath) {
-        controllerMethods = new HashMap<>();
         components = new HashMap<>();
         var classes = ComponentScanner.scan(basePath);
         for (var clazz : classes) {
@@ -54,17 +54,21 @@ public class AnnotationProcessor {
             if (!method.isAnnotationPresent(Route.class)) {
                 continue;
             }
-            var route =  method.getAnnotation(Route.class);
-            controllerMethods.put(
-                    HttpUtil.getRoutingKey(route.method(), clazz.getAnnotation(Controller.class).value(), route.path()),
-                    new ControllerDefinition(clazz, method, getMethodParameters(method))
+            var route = method.getAnnotation(Route.class);
+
+            var controllerDefinition = new ControllerDefinition(clazz, method, getMethodParameters(method));
+            RoutingHelper.mapDynamicRoute(
+                    route.method(),
+                    HttpUtil.getRoutingKey(clazz.getAnnotation(Controller.class).value(), route.path()),
+                    controllerDefinition
             );
         }
     }
 
     private List<ControllerParameter> getMethodParameters(Method method) {
         List<ControllerParameter> parameters = new ArrayList<>();
-        for (var parameter : method.getParameters()) {
+        var methodParams = method.getParameters();
+        for (var parameter : methodParams) {
             if (parameter.isAnnotationPresent(FromQuery.class)) {
                 parameters.add(new ControllerParameter(parameter, ParameterSource.QUERY));
             } else if (parameter.isAnnotationPresent(FromRoute.class)) {
@@ -73,11 +77,10 @@ public class AnnotationProcessor {
                 parameters.add(new ControllerParameter(parameter, ParameterSource.BODY));
             }
         }
+        if (methodParams.length != parameters.size()) {
+            throw new ParameterException(methodParams.length, parameters.size(), method.getName());
+        }
         return parameters;
-    }
-
-    public Map<String, ControllerDefinition> getControllerMethods() {
-        return controllerMethods;
     }
 
     public Map<Class<?>, Lifetime> getComponents() {

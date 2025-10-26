@@ -1,4 +1,4 @@
-package com.snow.http;
+package com.snow.http.models;
 
 @FunctionalInterface
 public interface HttpHandler {

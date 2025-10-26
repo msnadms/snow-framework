@@ -1,7 +1,13 @@
 package com.snow.web;
 
+import com.snow.annotations.Route;
+import com.snow.annotations.params.FromQuery;
+import com.snow.annotations.params.FromRoute;
 import com.snow.di.ApplicationContext;
 import com.snow.http.*;
+import com.snow.http.models.HttpRequest;
+import com.snow.util.HttpUtil;
+import com.snow.util.ObjectConverter;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
@@ -10,37 +16,47 @@ import java.util.Map;
 
 public class DispatcherService {
 
-    private final ControllerDefinition definition;
     private final ApplicationContext context;
+    private final ControllerDefinition controllerDefinition;
+    private final List<String> routeParameters;
 
-    public DispatcherService(ApplicationContext context, String route) {
+    private final HttpRequest request;
+
+    public DispatcherService(ApplicationContext context, HttpRequest request) {
         this.context = context;
-        this.definition = context.getControllerDefinition(route);
+        var controllerContext = RoutingHelper.getControllerContext(request.method(), request.route());
+        this.routeParameters = controllerContext.routeParameters();
+        this.controllerDefinition = controllerContext.definition();
+        this.request = request;
     }
 
-    public Object invokeControllerMethod(HttpRequest request, HttpResponse response) {
-        var method = definition.method();
+    public Object invokeControllerMethod() {
+        var method = controllerDefinition.method();
+        var controllerRoute = method.getAnnotation(Route.class).path();
         try {
-            var controller = context.createComponent(definition.clazz());
-            var controllerParameters = definition.parameters();
+            var controller = context.createComponent(controllerDefinition.clazz());
+            var controllerParameters = controllerDefinition.parameters();
             return method.invoke(
                     controller,
-                    parseParameters(request, controllerParameters)
+                    parseParameters(controllerRoute, controllerParameters)
             );
         } catch (InvocationTargetException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Object[] parseParameters(HttpRequest request, List<ControllerParameter> controllerParameters) {
+    private Object[] parseParameters(String controllerRoute, List<ControllerParameter> controllerParameters) {
         Object[] parameters = new Object[controllerParameters.size()];
-        Map<String, String> queryParams = HttpUtil.getQueryParams(request.route());
+
+        Map<String, String> queryParams = HttpUtil.getQueryParams(this.request.route());
+        Map<String, String> routeParams = HttpUtil.getRouteParams(controllerRoute, this.routeParameters);
+
         for (int i = 0; i < controllerParameters.size(); i++) {
             var controllerParameter = controllerParameters.get(i);
             parameters[i] = switch (controllerParameter.source()) {
                 case QUERY -> parseQueryParam(queryParams, controllerParameter.parameter());
-                case ROUTE ->  parseRouteParams(request.route(), controllerParameter.parameter());
-                case BODY -> parseBodyParam(request, controllerParameter.parameter());
+                case ROUTE -> parseRouteParam(routeParams, controllerParameter.parameter());
+                case BODY -> parseBodyParam(controllerParameter.parameter());
             };
         }
         return parameters;
@@ -48,16 +64,24 @@ public class DispatcherService {
 
     private Object parseQueryParam(Map<String, String> queryParams, Parameter parameter) {
         Class<?> type = parameter.getType();
-        var paramAsString = queryParams.get(parameter.getName());
+        var paramAsString = queryParams.get(getParamName(parameter, true));
+        return ObjectConverter.convert(paramAsString, type);
+    }
 
+    private Object parseRouteParam(Map<String, String> routeMap, Parameter parameter) {
+        Class<?> type = parameter.getType();
+        var paramAsString = routeMap.get(getParamName(parameter, false));
+        return ObjectConverter.convert(paramAsString, type);
+    }
+
+    private Object parseBodyParam(Parameter parameter) {
         return null;
     }
 
-    private Object[] parseRouteParams(String route, Parameter parameter) {
-        return null;
-    }
-
-    private Object parseBodyParam(HttpRequest request, Parameter parameter) {
-        return null;
+    private String getParamName(Parameter parameter, boolean query) {
+        String override = query
+                ? parameter.getAnnotation(FromQuery.class).value()
+                : parameter.getAnnotation(FromRoute.class).value();
+        return override.isEmpty() && parameter.isNamePresent() ? parameter.getName() : override;
     }
 }
