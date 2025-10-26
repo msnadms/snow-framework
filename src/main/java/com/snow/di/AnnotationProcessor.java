@@ -2,19 +2,24 @@ package com.snow.di;
 
 import com.snow.annotations.Controller;
 import com.snow.annotations.Component;
-import com.snow.annotations.Route;
+import com.snow.annotations.methods.HttpMethod;
 import com.snow.annotations.params.FromBody;
 import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
+import com.snow.exceptions.AnnotationException;
 import com.snow.exceptions.ParameterException;
 import com.snow.http.ControllerDefinition;
 import com.snow.http.ControllerParameter;
+import com.snow.http.HttpRoutingData;
 import com.snow.util.HttpUtil;
 import com.snow.util.Lifetime;
 import com.snow.util.ParameterSource;
 import com.snow.web.RoutingHelper;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -50,16 +55,16 @@ public class AnnotationProcessor {
     }
 
     private void setControllerMethod(Class<?> clazz) {
-        for (var method : clazz.getMethods()) {
-            if (!method.isAnnotationPresent(Route.class)) {
+        for (var method : clazz.getDeclaredMethods()) {
+            if (!Modifier.isPublic(method.getModifiers())) {
                 continue;
             }
-            var route = method.getAnnotation(Route.class);
+
+            var routingData = HttpUtil.getMapping(method, clazz.getAnnotation(Controller.class).value());
 
             var controllerDefinition = new ControllerDefinition(clazz, method, getMethodParameters(method));
             RoutingHelper.mapDynamicRoute(
-                    route.method(),
-                    HttpUtil.getRoutingKey(clazz.getAnnotation(Controller.class).value(), route.path()),
+                    routingData,
                     controllerDefinition
             );
         }

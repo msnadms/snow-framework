@@ -1,8 +1,10 @@
 package com.snow.web;
 
+import com.snow.exceptions.BadRouteException;
 import com.snow.exceptions.ExistingRouteException;
 import com.snow.http.ControllerDefinition;
 import com.snow.http.ControllerContext;
+import com.snow.http.HttpRoutingData;
 import com.snow.http.models.RouteNode;
 import com.snow.util.HttpUtil;
 
@@ -13,7 +15,9 @@ public class RoutingHelper {
 
     private static final RouteNode routeNode = new RouteNode();
 
-    public static synchronized void mapDynamicRoute(String method, String route, ControllerDefinition definition) {
+    public static synchronized void mapDynamicRoute(HttpRoutingData data, ControllerDefinition definition) {
+        String route = data.route();
+        String method = data.method();
         String[] segments = route.split("/");
         RouteNode node = routeNode;
         for (String segment : segments) {
@@ -43,7 +47,7 @@ public class RoutingHelper {
         node.controllers.put(method, definition);
     }
 
-    public static ControllerContext getControllerContext(String method, String route) {
+    public static ControllerContext getControllerContext(String method, String route) throws BadRouteException {
         RouteNode node = routeNode;
         String[] segments = HttpUtil.getSimpleRoute(HttpUtil.normalizeRoute(route)).split("/");
         List<String> paramValues = new ArrayList<>();
@@ -54,12 +58,12 @@ public class RoutingHelper {
                 node = node.dynamicChild;
                 paramValues.add(segment);
             } else {
-                throw new IllegalArgumentException("Route " + method + " " + route + " does not exist");
+                throw new BadRouteException(method, route);
             }
         }
         var definition = node.controllers.get(method);
         if (definition == null) {
-            throw new IllegalArgumentException("Route " + method + " " + route + " does not exist");
+            throw new BadRouteException(method, route);
         }
         return new ControllerContext(definition, paramValues);
     }

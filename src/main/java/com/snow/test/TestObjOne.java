@@ -3,7 +3,8 @@ package com.snow.test;
 import com.snow.annotations.Component;
 import com.snow.annotations.Controller;
 import com.snow.annotations.Inject;
-import com.snow.annotations.Route;
+import com.snow.annotations.methods.Get;
+import com.snow.annotations.methods.Post;
 import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
 import com.snow.util.Lifetime;
@@ -17,12 +18,12 @@ public class TestObjOne {
         System.out.println("TestObjOne instantiated");
     }
 
-    @Route(path = "{two}", method = "GET")
-    public String getUsers(@FromQuery("one") String one, @FromRoute("two") String two) {
+    @Get("{two}/")
+    public String getUsers(@FromQuery String one, @FromRoute String two) {
         return one + " " + two;
     }
 
-    @Route(path = "settings", method = "POST")
+    @Post("settings/")
     public String submitSettings() {
         return "settings";
     }

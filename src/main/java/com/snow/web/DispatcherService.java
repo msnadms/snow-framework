@@ -1,9 +1,9 @@
 package com.snow.web;
 
-import com.snow.annotations.Route;
 import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
-import com.snow.di.ApplicationContext;
+import com.snow.di.ComponentFactory;
+import com.snow.exceptions.BadRouteException;
 import com.snow.http.*;
 import com.snow.http.models.HttpRequest;
 import com.snow.util.HttpUtil;
@@ -16,13 +16,13 @@ import java.util.Map;
 
 public class DispatcherService {
 
-    private final ApplicationContext context;
+    private final ComponentFactory context;
     private final ControllerDefinition controllerDefinition;
     private final List<String> routeParameters;
 
     private final HttpRequest request;
 
-    public DispatcherService(ApplicationContext context, HttpRequest request) {
+    public DispatcherService(ComponentFactory context, HttpRequest request) throws BadRouteException {
         this.context = context;
         var controllerContext = RoutingHelper.getControllerContext(request.method(), request.route());
         this.routeParameters = controllerContext.routeParameters();
@@ -32,7 +32,7 @@ public class DispatcherService {
 
     public Object invokeControllerMethod() {
         var method = controllerDefinition.method();
-        var controllerRoute = method.getAnnotation(Route.class).path();
+        var controllerRoute = HttpUtil.getMapping(method, "").route();
         try {
             var controller = context.createComponent(controllerDefinition.clazz());
             var controllerParameters = controllerDefinition.parameters();

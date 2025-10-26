@@ -1,13 +1,12 @@
-package com.snow.annotations;
+package com.snow.annotations.methods;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.METHOD)
+@Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Route {
-    String method() default "";
-    String path() default "";
+public @interface HttpMethod {
+    String method();
 }

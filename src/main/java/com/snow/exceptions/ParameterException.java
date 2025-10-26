@@ -11,14 +11,6 @@ public class ParameterException extends RuntimeException {
         );
     }
 
-    public ParameterException(String route, String controllerRoute) {
-        super(
-            String.format(
-                    "Route from request %s does not match route from controller %s",
-                    route, controllerRoute)
-        );
-    }
-
     public ParameterException(String controllerParam) {
         super(String.format("Controller param %s is not a parameter in the method", controllerParam));
     }

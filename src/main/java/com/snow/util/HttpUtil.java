@@ -1,5 +1,12 @@
 package com.snow.util;
 
+import com.snow.annotations.methods.HttpMethod;
+import com.snow.exceptions.AnnotationException;
+import com.snow.http.HttpRoutingData;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -8,9 +15,11 @@ public class HttpUtil {
     private static final Pattern LEADING_SLASH = Pattern.compile("^/+");
     private static final Pattern TRAILING_SLASH = Pattern.compile("/+$");
     private static final Pattern MULTI_SLASH = Pattern.compile("/+");
+    private static final Map<Class<? extends Annotation>, HttpMethod> methodMappings = new HashMap<>();
 
     public static String getRoutingKey(String controllerRoute, String route) {
-        return controllerRoute + "/" + route;
+        String delimiter = controllerRoute.endsWith("/") || route.startsWith("/") ? "" : "/";
+        return controllerRoute.isEmpty() ? route : controllerRoute + delimiter + route;
     }
 
     public static String getSimpleRoute(String route) {
@@ -51,5 +60,29 @@ public class HttpUtil {
                                     .replaceAll(""))
                             .replaceAll(""))
                     .replaceAll("/");
+    }
+
+    public static HttpRoutingData getMapping(Method method, String controllerRoute) {
+        for (var annotation : method.getAnnotations()) {
+            HttpMethod httpMethod = methodMappings.computeIfAbsent(
+                    annotation.annotationType(),
+                    a -> a.getAnnotation(HttpMethod.class)
+            );
+            if (httpMethod != null) {
+                try {
+                    String methodRoute =
+                            (String) annotation.annotationType().getMethod("value").invoke(annotation);
+                    String route =
+                            HttpUtil.getRoutingKey(controllerRoute, methodRoute);
+                    return new HttpRoutingData(
+                            httpMethod.method(),
+                            route
+                    );
+                } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                    throw new AnnotationException(annotation, method, e);
+                }
+            }
+        }
+        throw new AnnotationException(method);
     }
 }
