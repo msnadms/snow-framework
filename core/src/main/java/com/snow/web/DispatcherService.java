@@ -34,7 +34,7 @@ public class DispatcherService {
         this.request = request;
     }
 
-    public Object invokeControllerMethod() {
+    public Object invokeControllerMethod() throws BadRequestException {
         var method = controllerDefinition.method();
         var controllerRoute = HttpUtil.getMapping(method, "").route();
         try {
@@ -50,7 +50,7 @@ public class DispatcherService {
         }
     }
 
-    private Object[] parseParameters(String controllerRoute, List<ControllerParameter> controllerParameters) {
+    private Object[] parseParameters(String controllerRoute, List<ControllerParameter> controllerParameters) throws BadRequestException {
         Object[] parameters = new Object[controllerParameters.size()];
 
         Map<String, String> queryParams = HttpUtil.getQueryParams(this.request.route());
@@ -79,9 +79,9 @@ public class DispatcherService {
         return ObjectConverter.convert(paramAsString, type);
     }
 
-    private Object parseBodyParam(Parameter parameter) {
-        var contentLengthHeader = this.request.headers().get("Content-Length");
-        var contentType = this.request.headers().get("Content-Type");
+    private Object parseBodyParam(Parameter parameter) throws BadRequestException {
+        var contentLengthHeader = this.request.headers().get("Content-Length").get(0);
+        var contentType = this.request.headers().get("Content-Type").get(0);
         Class<?> resultType = parameter.getType();
         if (contentLengthHeader != null
                 && !contentLengthHeader.equals("0")

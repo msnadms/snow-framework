@@ -1,17 +1,19 @@
 package com.snow.test;
 
 import com.snow.di.ComponentFactory;
+import com.snow.exceptions.BadRequestException;
 import com.snow.exceptions.BadRouteException;
 import com.snow.http.models.HttpRequest;
 import com.snow.web.DispatcherService;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 
 public class Runner {
 
-    public static void main(String[] args) throws BadRouteException {
+    public static void main(String[] args) throws BadRouteException, BadRequestException {
         var context = ComponentFactory.get("com.snow");
         context.createComponent(TestObjOne.class);
         DispatcherService service = new DispatcherService(context, getRequest("GET", "users/123?one=test"));
@@ -38,8 +40,8 @@ public class Runner {
             }
 
             @Override
-            public Map<String, String> headers() {
-                return Map.of("Content-Length", "1", "Content-Type", "application/json");
+            public Map<String, List<String>> headers() {
+                return Map.of("Content-Length", List.of("1"), "Content-Type", List.of("application/json"));
             }
 
             @Override
