@@ -10,14 +10,11 @@ import com.snow.exceptions.AnnotationException;
 import com.snow.exceptions.ParameterException;
 import com.snow.http.ControllerDefinition;
 import com.snow.http.ControllerParameter;
-import com.snow.http.HttpRoutingData;
 import com.snow.util.HttpUtil;
 import com.snow.util.Lifetime;
 import com.snow.util.ParameterSource;
 import com.snow.web.RoutingHelper;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;

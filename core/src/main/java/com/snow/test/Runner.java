@@ -1,11 +1,11 @@
-package com.snow.core;
+package com.snow.test;
 
 import com.snow.di.ComponentFactory;
 import com.snow.exceptions.BadRouteException;
 import com.snow.http.models.HttpRequest;
-import com.snow.test.TestObjOne;
 import com.snow.web.DispatcherService;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -18,6 +18,9 @@ public class Runner {
         var result = service.invokeControllerMethod();
         System.out.println(result);
         service = new DispatcherService(context, getRequest("POST", "users/settings/"));
+        result = service.invokeControllerMethod();
+        System.out.println(result);
+        service = new DispatcherService(context, getRequest("POST", "users"));
         result = service.invokeControllerMethod();
         System.out.println(result);
     }
@@ -36,12 +39,13 @@ public class Runner {
 
             @Override
             public Map<String, String> headers() {
-                return Map.of();
+                return Map.of("Content-Length", "1", "Content-Type", "application/json");
             }
 
             @Override
             public InputStream body() {
-                return null;
+                String json = "{\"id\": 1, \"firstName\": \"mason\", \"lastName\": \"adams\"}";
+                return new ByteArrayInputStream(json.getBytes());
             }
         };
     }

@@ -2,8 +2,11 @@ package com.snow.util;
 
 import com.snow.annotations.methods.HttpMethod;
 import com.snow.exceptions.AnnotationException;
+import com.snow.exceptions.BadRequestException;
+import com.snow.exceptions.BadRouteException;
 import com.snow.http.HttpRoutingData;
 
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -16,6 +19,13 @@ public class HttpUtil {
     private static final Pattern TRAILING_SLASH = Pattern.compile("/+$");
     private static final Pattern MULTI_SLASH = Pattern.compile("/+");
     private static final Map<Class<? extends Annotation>, HttpMethod> methodMappings = new HashMap<>();
+    private static final Map<Class<? extends Exception>, Integer> errorCodeMap =
+            Map.of(
+                    BadRouteException.class, 404,
+                    BadRequestException.class, 400,
+                    IOException.class, 400,
+                    RuntimeException.class, 500
+            );
 
     public static String getRoutingKey(String controllerRoute, String route) {
         String delimiter = controllerRoute.endsWith("/") || route.startsWith("/") ? "" : "/";
@@ -84,5 +94,18 @@ public class HttpUtil {
             }
         }
         throw new AnnotationException(method);
+    }
+
+    public static int errorCode(Exception e) {
+        return errorCodeMap.getOrDefault(e.getClass(), 500);
+    }
+
+    public static int successCode(String method) throws BadRequestException {
+        return switch (method) {
+            case "GET", "PUT" -> 200;
+            case "POST" -> 201;
+            case "DELETE" -> 204;
+            default -> throw new BadRequestException("Unrecognized method " + method);
+        };
     }
 }

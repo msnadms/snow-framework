@@ -3,12 +3,16 @@ package com.snow.web;
 import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
 import com.snow.di.ComponentFactory;
+import com.snow.exceptions.BadRequestException;
 import com.snow.exceptions.BadRouteException;
 import com.snow.http.*;
 import com.snow.http.models.HttpRequest;
 import com.snow.util.HttpUtil;
+import com.snow.util.JsonUtil;
 import com.snow.util.ObjectConverter;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
 import java.util.List;
@@ -35,11 +39,12 @@ public class DispatcherService {
         var controllerRoute = HttpUtil.getMapping(method, "").route();
         try {
             var controller = context.createComponent(controllerDefinition.clazz());
-            var controllerParameters = controllerDefinition.parameters();
-            return method.invoke(
+            var result = method.invoke(
                     controller,
-                    parseParameters(controllerRoute, controllerParameters)
+                    parseParameters(controllerRoute, controllerDefinition.parameters())
             );
+            context.clearScopedCache();
+            return result;
         } catch (InvocationTargetException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -75,6 +80,20 @@ public class DispatcherService {
     }
 
     private Object parseBodyParam(Parameter parameter) {
+        var contentLengthHeader = this.request.headers().get("Content-Length");
+        var contentType = this.request.headers().get("Content-Type");
+        Class<?> resultType = parameter.getType();
+        if (contentLengthHeader != null
+                && !contentLengthHeader.equals("0")
+                && contentType != null
+                && contentType.equals("application/json")
+        ) {
+            try (InputStream in = this.request.body()) {
+                return JsonUtil.deserialize(in, resultType);
+            } catch (IOException e) {
+                throw new BadRequestException("Error deserializing body");
+            }
+        }
         return null;
     }
 

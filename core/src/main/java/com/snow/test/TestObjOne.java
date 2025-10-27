@@ -5,6 +5,7 @@ import com.snow.annotations.Controller;
 import com.snow.annotations.Inject;
 import com.snow.annotations.methods.Get;
 import com.snow.annotations.methods.Post;
+import com.snow.annotations.params.FromBody;
 import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
 import com.snow.util.Lifetime;
@@ -21,6 +22,11 @@ public class TestObjOne {
     @Get("{two}/")
     public String getUsers(@FromQuery String one, @FromRoute String two) {
         return one + " " + two;
+    }
+
+    @Post
+    public User setUser(@FromBody User user) {
+        return user;
     }
 
     @Post("settings/")
