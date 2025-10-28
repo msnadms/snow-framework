@@ -1,4 +1,5 @@
 import com.snow.adapters.JettyAdapter;
+import com.snow.middleware.RequestInfoLogging;
 import com.snow.web.Snow;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
@@ -15,7 +16,8 @@ public class JettyServer {
         ServerConnector connector = new ServerConnector(server, new HttpConnectionFactory(httpConfig));
         connector.setPort(8080);
         server.addConnector(connector);
-        server.setHandler(new JettyAdapter(snow.receive()));
+        snow.use(new RequestInfoLogging());
+        server.setHandler(new JettyAdapter(snow));
         server.start();
         server.join();
     }

@@ -1,6 +1,6 @@
 package com.snow.adapters;
 
-import com.snow.http.models.HttpHandler;
+import com.snow.web.Snow;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
@@ -8,10 +8,10 @@ import org.eclipse.jetty.util.Callback;
 
 public class JettyAdapter extends Handler.Abstract {
 
-    private final HttpHandler snowHandler;
+    private final Snow snow;
 
-    public JettyAdapter(HttpHandler handler) {
-        this.snowHandler = handler;
+    public JettyAdapter(Snow snow) {
+        this.snow = snow;
     }
 
     @Override
@@ -19,7 +19,7 @@ public class JettyAdapter extends Handler.Abstract {
         try {
             var snowRequest = new JettyRequestAdapter(request);
             var snowResponse = new JettyResponseAdapter(request, response);
-            snowHandler.handle(snowRequest, snowResponse);
+            snow.exec(snowRequest, snowResponse);
             callback.succeeded();
             return true;
         } catch (Exception e) {

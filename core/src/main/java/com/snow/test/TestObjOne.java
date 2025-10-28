@@ -20,7 +20,8 @@ public class TestObjOne {
     }
 
     @Get("{two}/")
-    public String getUsers(@FromQuery String one, @FromRoute String two) {
+    public String getUsers(@FromQuery String one, @FromRoute String two) throws InterruptedException {
+        Thread.sleep(1000);
         return one + " " + two;
     }
 

@@ -4,7 +4,6 @@ import com.snow.http.models.HttpRequest;
 import org.eclipse.jetty.http.HttpFields;
 import org.eclipse.jetty.server.Request;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +26,7 @@ public record JettyRequestAdapter(Request request) implements HttpRequest {
     }
 
     @Override
-    public InputStream body() throws IOException {
+    public InputStream body() {
         return Request.asInputStream(request);
     }
 }

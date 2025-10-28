@@ -2,8 +2,9 @@ package com.snow.test;
 
 import com.snow.annotations.Component;
 import com.snow.annotations.Inject;
+import com.snow.util.Lifetime;
 
-@Component()
+@Component(Lifetime.SINGLETON)
 public class TestObjTwo {
 
     @Inject

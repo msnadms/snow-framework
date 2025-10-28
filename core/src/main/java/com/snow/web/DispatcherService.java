@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class DispatcherService {
 
@@ -45,8 +46,8 @@ public class DispatcherService {
             );
             context.clearScopedCache();
             return result;
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new BadRequestException(e.getMessage());
         }
     }
 
