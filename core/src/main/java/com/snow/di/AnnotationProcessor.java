@@ -28,7 +28,7 @@ public class AnnotationProcessor {
 
     private static AnnotationProcessor instance;
 
-    public static AnnotationProcessor get(String basePath) {
+    protected static AnnotationProcessor get(String basePath) {
         if (instance == null) {
             instance = new AnnotationProcessor(basePath);
         }

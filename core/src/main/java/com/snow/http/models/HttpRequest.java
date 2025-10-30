@@ -11,5 +11,7 @@ public interface HttpRequest {
     String route();
     Map<String, List<String>> headers();
     InputStream body() throws IOException;
+    void setAttribute(String name, Object value);
+    Object getAttribute(String name);
 
 }

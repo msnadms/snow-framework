@@ -18,6 +18,7 @@ import java.lang.reflect.Parameter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 public class DispatcherService {
 
@@ -35,7 +36,7 @@ public class DispatcherService {
         this.request = request;
     }
 
-    public Object invokeControllerMethod() throws BadRequestException {
+    public CompletableFuture<?> invokeControllerMethod() throws BadRequestException {
         var method = controllerDefinition.method();
         var controllerRoute = HttpUtil.getMapping(method, "").route();
         try {
@@ -45,7 +46,10 @@ public class DispatcherService {
                     parseParameters(controllerRoute, controllerDefinition.parameters())
             );
             context.clearScopedCache();
-            return result;
+            if (result instanceof CompletionStage<?> cs) {
+                return cs.toCompletableFuture();
+            }
+            return CompletableFuture.completedFuture(result);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new BadRequestException(e.getMessage());
         }

@@ -2,9 +2,9 @@ package com.snow.http.models;
 
 import com.snow.exceptions.BadRouteException;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 @FunctionalInterface
 public interface HttpHandler {
-    void handle(HttpRequest request, HttpResponse response) throws BadRouteException;
+    CompletionStage<Void> handle(HttpRequest request, HttpResponse response) throws BadRouteException;
 }

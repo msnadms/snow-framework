@@ -27,6 +27,16 @@ public record JettyRequestAdapter(Request request) implements HttpRequest {
 
     @Override
     public InputStream body() {
-        return Request.asInputStream(request);
+        return Request.asInputStream(this.request);
+    }
+
+    @Override
+    public void setAttribute(String name, Object value) {
+        this.request.setAttribute(name, value);
+    }
+
+    @Override
+    public Object getAttribute(String name) {
+        return this.request.getAttribute(name);
     }
 }

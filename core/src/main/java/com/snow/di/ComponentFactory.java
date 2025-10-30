@@ -16,7 +16,6 @@ public class ComponentFactory {
 
     private static final Map<Class<?>, Constructor<?>> constructors = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Object> singletons = new ConcurrentHashMap<>();
-
     private final ThreadLocal<Map<Class<?>, Object>> scoped = ThreadLocal.withInitial(HashMap::new);
     private final Map<Class<?>, Lifetime> components;
 
@@ -32,6 +31,7 @@ public class ComponentFactory {
     private ComponentFactory(String basePath) {
         var processor = AnnotationProcessor.get(basePath);
         this.components = Collections.unmodifiableMap(processor.getComponents());
+        initSingletons();
     }
 
     public <T> T createComponent(Class<T> clazz) {
@@ -81,6 +81,14 @@ public class ComponentFactory {
 
     public void clearScopedCache() {
         scoped.get().clear();
+    }
+
+    private void initSingletons() {
+        for (Map.Entry<Class<?>, Lifetime> entry : components.entrySet()) {
+            if (entry.getValue() == Lifetime.SINGLETON) {
+                createComponent(entry.getKey());
+            }
+        }
     }
 
     private boolean isCyclic(Class<?> clazz, Set<Class<?>> path) {

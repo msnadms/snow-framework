@@ -10,6 +10,8 @@ import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
 import com.snow.util.Lifetime;
 
+import java.util.concurrent.CompletableFuture;
+
 @Component(Lifetime.SCOPED)
 @Controller("users")
 public class TestObjOne {
@@ -20,9 +22,9 @@ public class TestObjOne {
     }
 
     @Get("{two}/")
-    public String getUsers(@FromQuery String one, @FromRoute String two) throws InterruptedException {
+    public CompletableFuture<String> getUsers(@FromQuery String one, @FromRoute String two) throws InterruptedException {
         Thread.sleep(1000);
-        return one + " " + two;
+        return CompletableFuture.supplyAsync(() -> one + " " + two);
     }
 
     @Post

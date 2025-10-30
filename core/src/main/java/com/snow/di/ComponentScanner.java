@@ -15,7 +15,7 @@ public class ComponentScanner {
 
     private static final Logger logger = Logger.getLogger(ComponentScanner.class.getName());
 
-    public static Set<Class<?>> scan(String basePath)
+    protected static Set<Class<?>> scan(String basePath)
             throws ClassScanningException {
         try {
             ClassLoader classLoader = Thread.currentThread().getContextClassLoader();

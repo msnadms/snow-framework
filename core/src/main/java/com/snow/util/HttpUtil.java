@@ -11,6 +11,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
 public class HttpUtil {
@@ -107,5 +108,11 @@ public class HttpUtil {
             case "DELETE" -> 204;
             default -> throw new BadRequestException("Unrecognized method " + method);
         };
+    }
+
+    public static CompletableFuture<Void> returnExceptionally(Throwable e) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        future.completeExceptionally(e);
+        return future;
     }
 }

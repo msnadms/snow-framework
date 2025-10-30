@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static com.snow.util.HttpUtil.returnExceptionally;
+
 public class Snow {
 
     private final ComponentFactory context;
@@ -37,8 +39,7 @@ public class Snow {
     private CompletableFuture<Void> exec(HttpRequest request, HttpResponse response, int idx) {
         try {
             if (idx == middlewareFns.size()) {
-                receive().handle(request, response);
-                return CompletableFuture.completedFuture(null);
+                return receive().handle(request, response).toCompletableFuture();
             }
             return middlewareFns.get(idx).exec(
                     request,
@@ -47,28 +48,24 @@ public class Snow {
         } catch (Exception e) {
             return returnExceptionally(e);
         }
-
     }
 
     private HttpHandler receive() {
         return (request, response) -> {
             try {
                 DispatcherService dispatcherService = new DispatcherService(context, request);
-                var result = dispatcherService.invokeControllerMethod();
-                response.status(HttpUtil.successCode(request.method()));
-                try (OutputStream out = response.body()) {
-                    out.write(JsonUtil.serialize(result).getBytes());
-                    response.status(HttpUtil.successCode(request.method()));
-                }
-            } catch (BadRequestException | BadRouteException | IOException | RuntimeException e) {
+                return dispatcherService.invokeControllerMethod().thenAccept((result) -> {
+                    try (OutputStream out = response.body()) {
+                        out.write(JsonUtil.serialize(result).getBytes());
+                        response.status(HttpUtil.successCode(request.method()));
+                    } catch (IOException | BadRequestException | RuntimeException e) {
+                        response.status(HttpUtil.errorCode(e));
+                    }
+                });
+            } catch (BadRequestException | BadRouteException | RuntimeException e) {
                 response.status(HttpUtil.errorCode(e));
+                return returnExceptionally(e);
             }
         };
-    }
-
-    private CompletableFuture<Void> returnExceptionally(Throwable e) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        future.completeExceptionally(e);
-        return future;
     }
 }
