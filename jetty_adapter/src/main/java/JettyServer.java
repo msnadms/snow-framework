@@ -1,4 +1,5 @@
 import com.snow.adapters.JettyAdapter;
+import com.snow.middleware.JwtAuthentication;
 import com.snow.middleware.JwtAuthorization;
 import com.snow.middleware.RequestInfoLogging;
 import com.snow.web.Snow;
@@ -20,7 +21,8 @@ public class JettyServer {
         connector.setPort(8080);
         server.addConnector(connector);
         snow.use(new RequestInfoLogging());
-        snow.use(new JwtAuthorization(SECRET));
+        snow.use(new JwtAuthentication(SECRET));
+        snow.use(new JwtAuthorization());
         server.setHandler(new JettyAdapter(snow));
         server.start();
         server.join();

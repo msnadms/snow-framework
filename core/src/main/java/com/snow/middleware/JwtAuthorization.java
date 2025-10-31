@@ -1,77 +1,82 @@
 package com.snow.middleware;
 
-import com.snow.exceptions.UnauthorizedRequestException;
+import com.snow.exceptions.BadRouteException;
+import com.snow.exceptions.ForbiddenRequestException;
 import com.snow.http.models.HttpRequest;
 import com.snow.http.models.HttpResponse;
 import com.snow.middleware.functions.MiddlewareChain;
 import com.snow.middleware.functions.MiddlewareFn;
 import com.snow.util.HttpUtil;
 import com.snow.util.JsonUtil;
+import com.snow.web.RoutingHelper;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Base64;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
-@SuppressWarnings("ClassCanBeRecord")
 public class JwtAuthorization implements MiddlewareFn {
 
     private static final Logger logger = Logger.getLogger(JwtAuthorization.class.getName());
-    private final String secret;
 
-    public JwtAuthorization(String secret) {
-        this.secret = secret;
-    }
+    public JwtAuthorization() {}
 
     @Override
     public CompletableFuture<Void> exec(HttpRequest request, HttpResponse response, MiddlewareChain next) {
 
-        var authHeaders = request.headers().get("Authorization");
-        String authHeader = authHeaders.get(0);
-        String token = authHeader.replaceFirst("Bearer ", "");
+        var authHeader = request.headers().get("Authorization");
 
+        if (authHeader == null) {
+            return sendForbidden(request, response, "ANY");
+        }
+        String token = authHeader.get(0).replaceFirst("Bearer ", "");
         String[] chunks = token.split("\\.");
         if (chunks.length != 3) {
-            logger.severe("Invalid JWT Token");
-            return sendUnauthorized(request, response);
+            return sendForbidden(request, response, "ANY");
         }
+
+        byte[] claimsDecoded = Base64.getUrlDecoder().decode(chunks[1].getBytes(StandardCharsets.UTF_8));
+        String claims = new String(claimsDecoded, StandardCharsets.UTF_8);
+
         try {
-            Mac verifier = Mac.getInstance("HmacSHA256");
-            verifier.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), verifier.getAlgorithm()));
+            var claimsMap = JsonUtil.deserializeToMap(claims);
+            var ctx = RoutingHelper.getControllerContext(request.method(), request.route());
+            String[] rolesRequired = ctx.definition().requiredRoles();
+            StringBuilder unsatisfiedRoles = new StringBuilder();
 
-            byte[] calculatedBytes = verifier.doFinal((chunks[0] + "." + chunks[1]).getBytes(StandardCharsets.UTF_8));
-            byte[] signatureBytes = Base64.getUrlDecoder().decode(chunks[2].getBytes(StandardCharsets.UTF_8));
-
-            if (!Arrays.equals(signatureBytes, calculatedBytes)) {
-                return sendUnauthorized(request, response);
+            for (String role : rolesRequired) {
+                String[] kv = role.split("=");
+                if (!claimsMap.getOrDefault(kv[0].trim(), "").equalsIgnoreCase(kv[1].trim())) {
+                    unsatisfiedRoles.append(kv[0]).append(" ");
+                }
             }
 
-            String claims = new String(Base64.getUrlDecoder().decode(chunks[0].getBytes(StandardCharsets.UTF_8)));
-            Map<String, Object> claimsMap = JsonUtil.deserializeToMap(claims);
-            for (Map.Entry<String, Object> entry : claimsMap.entrySet()) {
-                request.setAttribute(entry.getKey(), entry.getValue());
+            if (unsatisfiedRoles.isEmpty()) {
+                return next.execAsync();
             }
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            logger.warning("Cannot deserialize claims");
+
+            return sendForbidden(request, response, unsatisfiedRoles.toString());
+        } catch (IOException | BadRouteException e) {
+            logger.severe(String.format("Route %s %s not found", request.method(), request.route()));
+            response.status(404);
+            response.nativeWrite("Not Found".getBytes());
+            return HttpUtil.returnExceptionally(e);
         }
-        return next.execAsync();
     }
 
-    private CompletableFuture<Void> sendUnauthorized(HttpRequest request, HttpResponse response) {
-        logger.severe(String.format("Unauthorized Request: %s %s", request.method(), request.route()));
-        response.status(401);
-        response.nativeWrite("Unauthorized".getBytes());
+    private CompletableFuture<Void> sendForbidden(HttpRequest request, HttpResponse response, String role) {
+        logger.severe(
+                String.format(
+                        "Forbidden Request: %s %s - does not have role: %s",
+                        request.method(),
+                        request.route(),
+                        role)
+        );
+        response.status(403);
+        response.nativeWrite("Forbidden".getBytes());
         return HttpUtil.returnExceptionally(
-                new UnauthorizedRequestException(request.method(), request.route())
+                new ForbiddenRequestException(request.method(), request.route(), role)
         );
     }
 

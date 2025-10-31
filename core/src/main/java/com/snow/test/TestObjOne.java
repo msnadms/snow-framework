@@ -1,8 +1,6 @@
 package com.snow.test;
 
-import com.snow.annotations.Component;
-import com.snow.annotations.Controller;
-import com.snow.annotations.Inject;
+import com.snow.annotations.*;
 import com.snow.annotations.methods.Get;
 import com.snow.annotations.methods.Post;
 import com.snow.annotations.params.FromBody;
@@ -22,6 +20,7 @@ public class TestObjOne {
     }
 
     @Get("{two}/")
+    @RequiredRoles({"admin=false", "sub=1234567891"})
     public CompletableFuture<String> getUsers(@FromQuery String one, @FromRoute String two) throws InterruptedException {
         Thread.sleep(1000);
         return CompletableFuture.supplyAsync(() -> one + " " + two);

@@ -2,11 +2,10 @@ package com.snow.di;
 
 import com.snow.annotations.Controller;
 import com.snow.annotations.Component;
-import com.snow.annotations.methods.HttpMethod;
+import com.snow.annotations.RequiredRoles;
 import com.snow.annotations.params.FromBody;
 import com.snow.annotations.params.FromQuery;
 import com.snow.annotations.params.FromRoute;
-import com.snow.exceptions.AnnotationException;
 import com.snow.exceptions.ParameterException;
 import com.snow.http.ControllerDefinition;
 import com.snow.http.ControllerParameter;
@@ -59,7 +58,12 @@ public class AnnotationProcessor {
 
             var routingData = HttpUtil.getMapping(method, clazz.getAnnotation(Controller.class).value());
 
-            var controllerDefinition = new ControllerDefinition(clazz, method, getMethodParameters(method));
+            String[] roles = {};
+            if (method.isAnnotationPresent(RequiredRoles.class)) {
+                roles = method.getAnnotation(RequiredRoles.class).value();
+            }
+
+            var controllerDefinition = new ControllerDefinition(clazz, method, getMethodParameters(method), roles);
             RoutingHelper.mapDynamicRoute(
                     routingData,
                     controllerDefinition

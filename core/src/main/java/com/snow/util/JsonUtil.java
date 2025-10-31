@@ -22,7 +22,7 @@ public class JsonUtil {
         return mapper.readValue(in, clazz);
     }
 
-    public static Map<String, Object> deserializeToMap(String in) throws IOException {
+    public static Map<String, String> deserializeToMap(String in) throws IOException {
         return mapper.readValue(in.getBytes(), new TypeReference<>(){});
     }
 
