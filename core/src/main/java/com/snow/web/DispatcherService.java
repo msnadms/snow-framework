@@ -7,6 +7,8 @@ import com.snow.exceptions.BadRequestException;
 import com.snow.exceptions.BadRouteException;
 import com.snow.http.*;
 import com.snow.http.models.HttpRequest;
+import com.snow.http.models.HttpResponse;
+import com.snow.util.HttpResponseUtil;
 import com.snow.util.HttpUtil;
 import com.snow.util.JsonUtil;
 import com.snow.util.ObjectConverter;
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -27,19 +30,29 @@ public class DispatcherService {
     private final List<String> routeParameters;
 
     private final HttpRequest request;
+    private final HttpResponse response;
 
-    public DispatcherService(ComponentFactory context, HttpRequest request) throws BadRouteException {
+    public DispatcherService(ComponentFactory context, HttpRequest request, HttpResponse response) throws BadRouteException {
         this.context = context;
         var controllerContext = RoutingHelper.getControllerContext(request.method(), request.route());
         this.routeParameters = controllerContext.routeParameters();
         this.controllerDefinition = controllerContext.definition();
         this.request = request;
+        this.response = response;
     }
 
     public CompletableFuture<?> invokeControllerMethod() throws BadRequestException {
         var method = controllerDefinition.method();
         var controllerRoute = HttpUtil.getMapping(method, "").route();
         try {
+            if (controllerDefinition.requiredRoles().length > 0 &&
+                    !Boolean.TRUE.equals(request.getAttribute("Authorized"))) {
+                return HttpResponseUtil.sendForbidden(
+                        request,
+                        response,
+                        Arrays.toString(controllerDefinition.requiredRoles())
+                );
+            }
             var controller = context.createComponent(controllerDefinition.clazz());
             var result = method.invoke(
                     controller,
@@ -55,7 +68,8 @@ public class DispatcherService {
         }
     }
 
-    private Object[] parseParameters(String controllerRoute, List<ControllerParameter> controllerParameters) throws BadRequestException {
+    private Object[] parseParameters(String controllerRoute, List<ControllerParameter> controllerParameters)
+            throws BadRequestException {
         Object[] parameters = new Object[controllerParameters.size()];
 
         Map<String, String> queryParams = HttpUtil.getQueryParams(this.request.route());

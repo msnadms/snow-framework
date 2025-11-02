@@ -20,7 +20,7 @@ public class TestObjOne {
     }
 
     @Get("{two}/")
-    @RequiredRoles({"admin=false", "sub=1234567891"})
+    @RequiredRoles({"admin=true", "sub=1234567890"})
     public CompletableFuture<String> getUsers(@FromQuery String one, @FromRoute String two) throws InterruptedException {
         Thread.sleep(1000);
         return CompletableFuture.supplyAsync(() -> one + " " + two);

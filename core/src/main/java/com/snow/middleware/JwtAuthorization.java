@@ -1,46 +1,28 @@
 package com.snow.middleware;
 
 import com.snow.exceptions.BadRouteException;
-import com.snow.exceptions.ForbiddenRequestException;
 import com.snow.http.models.HttpRequest;
 import com.snow.http.models.HttpResponse;
 import com.snow.middleware.functions.MiddlewareChain;
 import com.snow.middleware.functions.MiddlewareFn;
-import com.snow.util.HttpUtil;
-import com.snow.util.JsonUtil;
+import com.snow.util.HttpResponseUtil;
 import com.snow.web.RoutingHelper;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Logger;
 
 public class JwtAuthorization implements MiddlewareFn {
-
-    private static final Logger logger = Logger.getLogger(JwtAuthorization.class.getName());
 
     public JwtAuthorization() {}
 
     @Override
     public CompletableFuture<Void> exec(HttpRequest request, HttpResponse response, MiddlewareChain next) {
 
-        var authHeader = request.headers().get("Authorization");
-
-        if (authHeader == null) {
-            return sendForbidden(request, response, "ANY");
+        if (!Boolean.TRUE.equals(request.getAttribute("Authenticated"))) {
+            return HttpResponseUtil.sendUnauthorized(request, response);
         }
-        String token = authHeader.get(0).replaceFirst("Bearer ", "");
-        String[] chunks = token.split("\\.");
-        if (chunks.length != 3) {
-            return sendForbidden(request, response, "ANY");
-        }
-
-        byte[] claimsDecoded = Base64.getUrlDecoder().decode(chunks[1].getBytes(StandardCharsets.UTF_8));
-        String claims = new String(claimsDecoded, StandardCharsets.UTF_8);
 
         try {
-            var claimsMap = JsonUtil.deserializeToMap(claims);
+            var claimsMap = ((ClaimsWrapper) request.getAttribute("claims")).getClaims();
             var ctx = RoutingHelper.getControllerContext(request.method(), request.route());
             String[] rolesRequired = ctx.definition().requiredRoles();
             StringBuilder unsatisfiedRoles = new StringBuilder();
@@ -53,31 +35,16 @@ public class JwtAuthorization implements MiddlewareFn {
             }
 
             if (unsatisfiedRoles.isEmpty()) {
+                request.setAttribute("Authorized", true);
                 return next.execAsync();
             }
 
-            return sendForbidden(request, response, unsatisfiedRoles.toString());
-        } catch (IOException | BadRouteException e) {
-            logger.severe(String.format("Route %s %s not found", request.method(), request.route()));
-            response.status(404);
-            response.nativeWrite("Not Found".getBytes());
-            return HttpUtil.returnExceptionally(e);
+            return HttpResponseUtil.sendForbidden(request, response, unsatisfiedRoles.toString());
+        } catch (BadRouteException e) {
+            return HttpResponseUtil.sendNotFound(request, response, e);
+        } catch (ClassCastException e) {
+            return HttpResponseUtil.sendForbidden(request, response, "ANY");
         }
-    }
-
-    private CompletableFuture<Void> sendForbidden(HttpRequest request, HttpResponse response, String role) {
-        logger.severe(
-                String.format(
-                        "Forbidden Request: %s %s - does not have role: %s",
-                        request.method(),
-                        request.route(),
-                        role)
-        );
-        response.status(403);
-        response.nativeWrite("Forbidden".getBytes());
-        return HttpUtil.returnExceptionally(
-                new ForbiddenRequestException(request.method(), request.route(), role)
-        );
     }
 
 }

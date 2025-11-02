@@ -53,12 +53,12 @@ public class Snow {
     private HttpHandler receive() {
         return (request, response) -> {
             try {
-                DispatcherService dispatcherService = new DispatcherService(context, request);
+                DispatcherService dispatcherService = new DispatcherService(context, request, response);
                 return dispatcherService.invokeControllerMethod().thenAccept((result) -> {
-                    try (OutputStream out = response.body()) {
-                        out.write(JsonUtil.serialize(result).getBytes());
+                    try {
+                        response.nativeWrite(JsonUtil.serialize(result).getBytes());
                         response.status(HttpUtil.successCode(request.method()));
-                    } catch (IOException | BadRequestException | RuntimeException e) {
+                    } catch (IOException | BadRequestException e) {
                         response.status(HttpUtil.errorCode(e));
                     }
                 });

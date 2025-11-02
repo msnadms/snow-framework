@@ -5,6 +5,7 @@ import com.snow.http.models.HttpRequest;
 import com.snow.http.models.HttpResponse;
 import com.snow.middleware.functions.MiddlewareChain;
 import com.snow.middleware.functions.MiddlewareFn;
+import com.snow.util.HttpResponseUtil;
 import com.snow.util.HttpUtil;
 import com.snow.util.JsonUtil;
 
@@ -47,7 +48,7 @@ public class JwtAuthentication implements MiddlewareFn {
         String[] chunks = token.split("\\.");
         if (chunks.length != 3) {
             logger.severe("Invalid JWT Token");
-            return sendUnauthorized(request, response);
+            return HttpResponseUtil.sendUnauthorized(request, response);
         }
         try {
             Mac verifier = Mac.getInstance(this.algorithm);
@@ -57,21 +58,23 @@ public class JwtAuthentication implements MiddlewareFn {
             byte[] signatureBytes = Base64.getUrlDecoder().decode(chunks[2].getBytes(StandardCharsets.UTF_8));
 
             if (!Arrays.equals(signatureBytes, calculatedBytes)) {
-                return sendUnauthorized(request, response);
+                return HttpResponseUtil.sendUnauthorized(request, response);
             }
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            return sendUnauthorized(request, response);
+
+            processClaims(request, chunks[1]);
+
+        } catch (NoSuchAlgorithmException | InvalidKeyException | IOException e) {
+            return HttpResponseUtil.sendUnauthorized(request, response);
         }
+        request.setAttribute("Authenticated", true);
         return next.execAsync();
     }
 
-    private CompletableFuture<Void> sendUnauthorized(HttpRequest request, HttpResponse response) {
-        logger.severe(String.format("Unauthorized Request: %s %s", request.method(), request.route()));
-        response.status(401);
-        response.nativeWrite("Unauthorized".getBytes());
-        return HttpUtil.returnExceptionally(
-                new UnauthorizedRequestException(request.method(), request.route())
-        );
+    private void processClaims(HttpRequest request, String chunk) throws IOException {
+        byte[] claimsDecoded = Base64.getUrlDecoder().decode(chunk.getBytes(StandardCharsets.UTF_8));
+        String claims = new String(claimsDecoded, StandardCharsets.UTF_8);
+        Map<String, String> claimsMap = JsonUtil.deserializeToMap(claims);
+        request.setAttribute("claims", new ClaimsWrapper(claimsMap));
     }
 
 }
