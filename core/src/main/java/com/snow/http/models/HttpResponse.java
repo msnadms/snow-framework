@@ -9,5 +9,6 @@ public interface HttpResponse {
     void header(String name, String value);
     OutputStream body();
     void nativeWrite(byte[] data);
+    boolean isCommitted();
 
 }

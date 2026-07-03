@@ -34,4 +34,9 @@ public record JettyResponseAdapter(Request request, Response response) implement
     public void nativeWrite(byte[] data) {
         response.write(true, ByteBuffer.wrap(data), Callback.NOOP);
     }
+
+    @Override
+    public boolean isCommitted() {
+        return this.response.isCommitted();
+    }
 }

@@ -19,12 +19,16 @@ public class JettyAdapter extends Handler.Abstract {
         try {
             var snowRequest = new JettyRequestAdapter(request);
             var snowResponse = new JettyResponseAdapter(request, response);
-            snow.exec(snowRequest, snowResponse);
-            callback.succeeded();
-            return true;
+            snow.exec(snowRequest, snowResponse).whenComplete((result, error) -> {
+                if (error != null) {
+                    callback.failed(error);
+                } else {
+                    callback.succeeded();
+                }
+            });
         } catch (Exception e) {
             callback.failed(e);
-            return false;
         }
+        return true;
     }
 }
